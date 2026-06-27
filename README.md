@@ -23,10 +23,9 @@ streamlit run songs_recommender.py
 Python · Pandas · NumPy · Streamlit
 
 ### **Future Improvements**
-- Vectorize similarity computation for speed
-- Use sklearn.preprocessing.MinMaxScaler for normalization
 - Handle duplicate song titles by different artists
 - Add genre/mood filtering
-Author
+- Deploy a live demo (e.g. Streamlit Community Cloud)
+
 
 Ayazhan — @Ayazhan-Z
