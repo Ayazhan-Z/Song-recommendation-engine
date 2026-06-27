@@ -2,8 +2,12 @@ import pandas as pd
 import numpy as np
 from numpy.linalg import norm
 import streamlit as st
+import os
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics.pairwise import cosine_similarity
 
-df = pd.read_csv(r'C:\Users\user\Songs Recommender\dataset.csv')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+df = pd.read_csv(os.path.join(BASE_DIR, "data", "dataset.csv"))
 
 df = df.dropna(subset = ['artists', 'album_name', 'track_name'], axis = 0)
 df = df.reset_index(drop = True)
@@ -14,44 +18,24 @@ feature_cols = [
     'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo'
 ]
 
-def normalize(data):
-    min_val = min(data)
-    if min_val<0:
-        data = [x+abs(min_val) for x in data]
-    max_val = max(data)
-    return [x/max_val for x in data]
-
-for i in range(0, len(feature_cols)):
-        df[feature_cols[i]] = normalize(df[feature_cols[i]])
+scaler = MinMaxScaler()
+df[feature_cols] = scaler.fit_transform(df[feature_cols])
 
 def recommend(song, df):
-    target = []
-    targ = np.array([])
+    matches = df[df['track_name'].str.lower() == song.lower()]
+    if matches.empty:
+        return None
 
-    for i in range(0, df.shape[0]):
-        if (song.lower() == df['track_name'][i].lower()):
-            target = df.iloc[i]
-            for j in range(0, len(feature_cols)):
-                targ = np.append(targ, target[feature_cols[j]])
-            break
+    target_vector = matches.iloc[0][feature_cols].values.reshape(1, -1)
+    all_vectors = df[feature_cols].values
 
-    if (len(target) == 0):
-        print("Can't find your song!")
-        return
-            
-    sim = np.array([])
-    for i in range(0, df.shape[0]):
-        compare = np.array([])
-        for j in range(0, len(feature_cols)):
-            compare = np.append(compare, df[feature_cols[j]][i])
-        temp = np.dot(targ, compare)/(norm(targ) * norm(compare))
-        sim = np.append(sim, temp);
-    df['sim'] = sim
-    
-    df = df.sort_values(by = 'sim', ascending = False)
-    out = df[1:6]
-    return(out[['track_name', 'artists']])
+    sim_scores = cosine_similarity(target_vector, all_vectors)[0]
+    df = df.copy()
+    df['sim'] = sim_scores
 
+    df_sorted = df.sort_values(by='sim', ascending=False)
+    out = df_sorted[1:6]
+    return out[['track_name', 'artists']]
 
 st.header("Songs Recommender Engine!")
 st.text("Hello! Want to expand your jam???")
@@ -59,9 +43,12 @@ st.text("Hello! Want to expand your jam???")
 song = st.text_input("Provide Song Name")
 
 if st.button("Search!"):
-    st.write("If you like " + song + " listen to:")
     out = (recommend(song, df))
-    st.write("### Preview", out.head())
+    if out is not None:
+        st.write("If you like " + song + " listen to:")
+        st.write("### Recommendations", out)
+    else:
+        st.write("Can't find that song in the dataset. Try another title!")
 
 
 
